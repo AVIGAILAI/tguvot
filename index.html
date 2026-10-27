@@ -227,6 +227,11 @@ export default {
     ctx.waitUntil(Promise.allSettled(jobs));
     return new Response('EVENT_RECEIVED');
   },
+
+  // runs by itself once a week (step 8) and renews the token before its 60 days run out
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(refreshToken(env));
+  },
 };
 
 async function onComment(c, env) {
@@ -247,10 +252,35 @@ async function onComment(c, env) {
 async function send(env, path, payload) {
   const r = await fetch(`https://graph.instagram.com/v23.0${path}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${env.IG_TOKEN}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${await token(env)}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!r.ok) console.error(`${path} failed: ${r.status} ${await r.text()}`);
+}
+
+// the renewed token is kept in TOKENS. If you paste a new IG_TOKEN later, the new one wins.
+async function token(env) {
+  if (!env.TOKENS || !env.IG_TOKEN) return env.IG_TOKEN;
+  const { value, metadata } = await env.TOKENS.getWithMetadata('ig_token');
+  return value &amp;&amp; metadata &amp;&amp; metadata.from === (await fingerprint(env.IG_TOKEN)) ? value : env.IG_TOKEN;
+}
+
+async function refreshToken(env) {
+  if (!env.TOKENS) return console.warn('token refresh skipped: no TOKENS KV binding');
+  const r = await fetch('https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&amp;access_token='
+    + encodeURIComponent(await token(env)));
+  if (!r.ok) return console.error(`token refresh failed: ${r.status} ${await r.text()}`);
+  const { access_token, expires_in } = await r.json();
+  const me = await fetch('https://graph.instagram.com/v23.0/me?fields=username',
+    { headers: { Authorization: `Bearer ${access_token}` } });
+  if (!access_token || !me.ok) return console.error(`refreshed token rejected: ${me.status}`);
+  await env.TOKENS.put('ig_token', access_token, { metadata: { from: await fingerprint(env.IG_TOKEN) } });
+  console.log(`token refreshed for @${(await me.json()).username}, valid ${Math.round(expires_in / 86400)} more days`);
+}
+
+async function fingerprint(s) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(d).slice(0, 8)].map(b =&gt; b.toString(16).padStart(2, '0')).join('');
 }
 
 async function signatureOk(raw, header, secret) {
@@ -387,6 +417,27 @@ function privacyPage() {
     </div>
   </section>
 
+  <section class="step" id="s8">
+    <span class="num">8</span>
+    <div>
+      <h2>מחדשות את הטוקן אוטומטית</h2>
+      <p>הטוקן של אינסטגרם פג אחרי 60 יום, ואז ההודעות מפסיקות לצאת בלי שום התראה. בשלב הזה השרת לומד לחדש אותו לבד פעם בשבוע, ולא תצטרכי לגעת בו יותר. הקוד לזה כבר נמצא בקוד שהדבקת, נשאר רק לתת לו מקום לשמור את הטוקן ושעון שיעיר אותו.</p>
+      <h3>מקום לשמור את הטוקן</h3>
+      <ol class="do">
+        <li>ב-Cloudflare: <span class="ui">Storage &amp; databases</span> ← <span class="ui">Workers KV</span> ← <span class="ui">Create instance</span>. שם: <code>TOKENS</code>. לוחצות <span class="ui">Create</span>.</li>
+        <li>חוזרות ל-<span class="ui">Workers &amp; Pages</span> ← השרת שלך ← <span class="ui">Settings</span> ← <span class="ui">Bindings</span> ← <span class="ui">Add binding</span> ← <span class="ui">KV namespace</span>.</li>
+        <li><span class="ui">Variable name</span>: <code>TOKENS</code>, בדיוק ככה, באותיות גדולות. ב-<span class="ui">KV namespace</span> בוחרות את <code>TOKENS</code> שיצרת. לוחצות <span class="ui">Add binding</span>.</li>
+      </ol>
+      <h3>שעון שמעיר אותו פעם בשבוע</h3>
+      <ol class="do">
+        <li>באותו <span class="ui">Settings</span> ← <span class="ui">Trigger Events</span> ← <span class="ui">Add</span> ← <span class="ui">Cron Triggers</span>.</li>
+        <li>בוחרות <span class="ui">Week</span>, יום כלשהו ושעה כלשהי. לוחצות <span class="ui">Add</span>.</li>
+      </ol>
+      <p>זהו. את <code>IG_TOKEN</code> לא משנות, הוא רק נקודת ההתחלה. ביום שבחרת יופיע ביומן (<span class="ui">Observability</span>) <code>token refreshed</code> וכמה ימים נשארו, ומאז זה חוזר כל שבוע.</p>
+      <div class="note"><b>אם פעם תדביקי טוקן חדש ב-IG_TOKEN</b>, השרת מזהה את זה ועובר אליו לבד, וממשיך לחדש ממנו.</div>
+    </div>
+  </section>
+
   <section>
     <h2>מילה חדשה לפוסט חדש</h2>
     <p>מעכשיו, לכל פוסט עם מתנה בפרטי מוסיפים מילה:</p>
@@ -407,6 +458,8 @@ function privacyPage() {
       <div><dt>ביומן כתוב <code>bad signature</code></dt><dd>ב-APP_SECRET נכנס הסוד הלא נכון. מחליפות אותו ב-Instagram app secret (שלב 3).</dd></div>
       <div><dt>ביומן לא מופיע כלום</dt><dd>בודקות שלושה דברים: <code>comments</code> דלוק, Webhook Subscription של החשבון במצב On, והאפליקציה ב-Live.</dd></div>
       <div><dt>התגובה זוהתה, אבל ההודעה לא נשלחה</dt><dd>ביומן תופיע שגיאה מ-Meta. הכי נפוץ: הטוקן פג או הועתק חסר. מייצרות חדש (<span class="ui">Generate token</span>) ומחליפות ב-Cloudflare.</dd></div>
+      <div><dt>ביומן כתוב <code>no TOKENS KV binding</code></dt><dd>החיבור משלב 8 חסר, או שה-Variable name לא כתוב בדיוק <code>TOKENS</code>.</dd></div>
+      <div><dt>ביומן כתוב <code>token refresh failed</code></dt><dd>אם הטוקן נוצר ממש עכשיו, זה תקין: אפשר לחדש רק טוקן בן יום לפחות, וזה יסתדר בשבוע הבא. אם הוא כבר פג, מייצרות חדש (<span class="ui">Generate token</span>) ומחליפות את IG_TOKEN. מכאן החידוש ממשיך לבד.</dd></div>
       <div><dt>החברה אומרת שלא קיבלה כלום</dt><dd>אם היא לא עוקבת אחרייך, ההודעה נכנסת אצלה ל<b>בקשות הודעות</b>, ולא לתיבה הרגילה.</dd></div>
       <div><dt>מי שהגיבה אתמול לא קיבלה</dt><dd>האוטומציה עובדת רק על תגובות שנכתבו אחרי שהיא הופעלה. לתגובות ישנות עונים ידנית.</dd></div>
     </dl>
@@ -416,7 +469,7 @@ function privacyPage() {
     <h2>חשוב לדעת</h2>
     <ul class="facts">
       <li><b>הודעה אוטומטית אחת לכל תגובה</b><span>זה הכלל של Meta. תוכן ארוך שמים בעמוד, ושולחים קישור.</span></li>
-      <li><b>הטוקן פג אחרי 60 יום</b><span>קובעות תזכורת ביומן. כשמגיע הזמן: <span class="ui">Generate token</span> שוב, ומחליפות את IG_TOKEN ב-Cloudflare.</span></li>
+      <li><b>הטוקן מתחדש לבד</b><span>אחרי שלב 8 השרת מחדש אותו כל שבוע. בלי שלב 8 הוא פג אחרי 60 יום, וצריך <span class="ui">Generate token</span> שוב ולהחליף את IG_TOKEN.</span></li>
       <li><b>התגובות שלך לא מפעילות כלום</b><span>השרת מדלג על החשבון שלך, כדי שתוכלי לענות בחופשיות.</span></li>
       <li><b>לא סומכות על קישורים זמניים</b><span>מה ששולחים בפרטי צריך להישאר זמין גם בעוד חודש: עמוד באתר שלך או בשרת עצמו.</span></li>
     </ul>
