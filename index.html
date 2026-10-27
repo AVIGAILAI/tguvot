@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>תגובה שהופכת להודעה</title>
+<meta name="description" content="מדריך חינם: אוטומציה שמחליפה את ManyChat. מי שכותבת מילה בתגובות מקבלת הכול בפרטי, בלי מנוי ובלי לתכנת">
+<meta property="og:title" content="תגובה שהופכת להודעה">
+<meta property="og:description" content="מדריך חינם: אוטומציה שמחליפה את ManyChat. מי שכותבת מילה בתגובות מקבלת הכול בפרטי, בלי מנוי ובלי לתכנת">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one reading column, a real numbered setup sequence, gold-framed copy boxes for prompts,
+   a symptom -> fix table for troubleshooting. Single committed dark look in the brand colors. */
+:root {
+  --bg: #131419;
+  --panel: #1C1D24;
+  --raised: #24252C;
+  --line: #33343D;
+  --ink: #F4F1E8;
+  --muted: #A39E92;
+  --gold: #D9B85A;
+  --gold-deep: #C9A227;
+  --red: #E0604F;
+  --display: "Heebo", "Arial Hebrew", Arial, sans-serif;
+  --body: "Heebo", "Arial Hebrew", Arial, sans-serif;
+  --mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 17px/1.7 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 80px;
+}
+main { max-width: 680px; margin: 0 auto; display: grid; gap: 56px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+p { margin: 0; }
+a { color: var(--gold); }
+.ltr { direction: ltr; unicode-bidi: isolate; }
+code, .ui { font-family: var(--mono); font-size: .86em; background: var(--raised); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+.ui { font-family: var(--body); font-weight: 700; font-size: .9em; color: var(--gold); }
+
+/* hero: the whole idea in one picture, comment on the right, DM on the left */
+header { display: grid; gap: 18px; }
+.eyebrow { color: var(--gold); font-weight: 700; font-size: 14px; letter-spacing: .08em; }
+h1 { font-size: clamp(34px, 8vw, 52px); line-height: 1.08; font-weight: 900; }
+h1 em { font-style: normal; color: var(--gold); }
+.lead { color: var(--muted); font-size: 18px; max-width: 58ch; }
+.flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; margin-top: 8px; }
+.bubble { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; font-size: 15px; min-width: 0; }
+.bubble small { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+.bubble.dm { border-color: var(--gold-deep); }
+.bubble b { color: var(--gold); }
+.arrow { color: var(--gold); font-size: 24px; }
+
+section { display: grid; gap: 16px; }
+h2 { font-size: 26px; font-weight: 800; line-height: 1.25; }
+h3 { font-size: 18px; font-weight: 700; color: var(--gold); margin-top: 6px; }
+.sub { color: var(--muted); }
+
+.need { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.need li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; }
+.need li::before { content: ""; width: 10px; height: 10px; margin-top: 10px; border: 2px solid var(--gold); border-radius: 50%; }
+.need b { color: var(--ink); }
+
+/* numbered steps: the order is the point */
+.step { display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start; }
+.num { width: 44px; height: 44px; border-radius: 50%; background: var(--gold); color: var(--bg); display: grid; place-items: center; font: 900 20px var(--display); }
+.step > div { display: grid; gap: 12px; min-width: 0; }
+ol.do { margin: 0; padding-inline-start: 22px; display: grid; gap: 8px; }
+ol.do li::marker { color: var(--gold); font-weight: 700; }
+
+.prompt { border: 2px solid var(--gold-deep); border-radius: 16px; background: var(--panel); overflow: hidden; }
+.prompt .lbl { display: block; padding: 10px 16px; background: var(--raised); color: var(--gold); font-weight: 700; font-size: 14px; }
+.prompt pre.code { direction: ltr; text-align: left; font: 500 13px/1.6 var(--mono); white-space: pre; }
+.prompt pre { margin: 0; padding: 16px; white-space: pre-wrap; font: 400 15.5px/1.75 var(--body); color: var(--ink); max-height: 360px; overflow: auto; }
+.prompt button { display: block; width: 100%; border: 0; padding: 14px; background: var(--gold); color: #151515; font: 800 17px var(--body); cursor: pointer; }
+.prompt button:focus-visible, a:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+.note { background: var(--panel); border-radius: 12px; padding: 14px 16px; font-size: 15.5px; border: 1px solid var(--line); }
+.note.warn { border-color: var(--red); }
+.note b { color: var(--gold); }
+.note.warn b { color: var(--red); }
+
+.secrets { width: 100%; border-collapse: collapse; font-size: 15px; }
+.secrets th, .secrets td { text-align: start; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.secrets th { color: var(--muted); font-weight: 500; font-size: 13px; }
+.table-wrap { overflow-x: auto; }
+
+/* troubleshooting: what you see -> what to do */
+.fix { display: grid; gap: 10px; margin: 0; }
+.fix div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; padding: 14px 16px; background: var(--panel); border-radius: 12px; }
+.fix dt { font-weight: 700; }
+.fix dd { margin: 0; color: var(--muted); }
+@media (max-width: 560px) { .fix div { grid-template-columns: 1fr; gap: 4px; } .flow { grid-template-columns: 1fr; } .arrow { transform: rotate(-90deg); justify-self: center; } }
+
+.facts { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.facts li { border-inline-start: 3px solid var(--gold-deep); padding-inline-start: 14px; }
+.facts b { display: block; }
+.facts span { color: var(--muted); }
+footer { color: var(--muted); font-size: 14px; text-align: center; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="eyebrow">אוטומציה לאינסטגרם, בלי ManyChat</span>
+    <h1>מישהי כותבת מילה בתגובות, <em>ומקבלת הכול בפרטי</em></h1>
+    <p class="lead">מדריך מלא לבנות לבד את האוטומציה שמחליפה את ManyChat: שרת קטן וחינמי שמקשיב לתגובות על הפוסטים שלך, ושולח הודעה בפרטי לכל מי שכותבת את המילה שבחרת. לא צריך לדעת לתכנת: הקוד כאן מוכן, מעתיקות ומדביקות, וממלאות את המילים והטקסטים שלך.</p>
+    <div class="flow" aria-label="איך זה נראה">
+      <div class="bubble"><small>תגובה מתחת לפוסט</small><b>עורך</b> 🙏</div>
+      <span class="arrow" aria-hidden="true">←</span>
+      <div class="bubble dm"><small>הודעה בפרטי, תוך שניות</small>היי! איזה כיף שכתבת 🙌 הנה המדריך…</div>
+    </div>
+  </header>
+
+  <section>
+    <h2>מה האוטומציה עושה</h2>
+    <ul class="need">
+      <li><span>מי שמגיבה <b>מילת מפתח</b> על פוסט או ריל מקבלת אוטומטית <b>הודעה בפרטי</b> עם מה שהבטחת: קישור, מדריך, פרומפט.</span></li>
+      <li><span>מתחת לתגובה שלה מופיעה <b>תשובה קצרה</b>, כמו "שלחתי לך בפרטי 💌". בכל פעם נוסח אחר, כדי שלא ייראה כמו העתק-הדבק.</span></li>
+      <li><span>אפשר להחזיק <b>כמה מילים במקביל</b>, מילה לכל פוסט, וכל מילה שולחת משהו אחר.</span></li>
+      <li><span>זה רץ <b>24 שעות ביממה</b>, גם כשהמחשב כבוי, <b>בלי מנוי</b>.</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>מה צריך לפני שמתחילות</h2>
+    <ul class="need">
+      <li><span><b>חשבון אינסטגרם מקצועי</b> (עסקי או יוצרת). בודקות באינסטגרם: הגדרות ← סוג חשבון וכלים.</span></li>
+      <li><span><b>מחשב</b>. מהטלפון ההגדרות קשות מדי.</span></li>
+      <li><span><b>חשבון פייסבוק</b>, בשביל אתר המפתחים של Meta.</span></li>
+      <li><span><b>חשבון אינסטגרם נוסף</b> (של חברה, או שני שלך), כדי לבדוק בסוף.</span></li>
+      <li><span><b>בערך שעה</b> בפעם הראשונה. אחר כך, מילה חדשה לוקחת שתי דקות.</span></li>
+    </ul>
+  </section>
+
+  <section class="step" id="s1">
+    <span class="num">1</span>
+    <div>
+      <h2>פותחות חשבון Cloudflare</h2>
+      <p>Cloudflare הוא המקום שבו השרת הקטן יגור. התוכנית החינמית מספיקה בגדול: עד 100,000 בקשות ביום.</p>
+      <ol class="do">
+        <li>נכנסות ל-<a class="ltr" href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com/sign-up</a> ונרשמות עם המייל. לא צריך כרטיס אשראי.</li>
+        <li>מאשרות את המייל שהם שולחים.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="step" id="s2">
+    <span class="num">2</span>
+    <div>
+      <h2>יוצרות את השרת ומדביקות את הקוד</h2>
+      <ol class="do">
+        <li>ב-Cloudflare: <span class="ui">Workers &amp; Pages</span> ← <span class="ui">Create</span> ← <span class="ui">Start with Hello World!</span>.</li>
+        <li>נותנות שם, למשל <code>auto-dm</code>, ולוחצות <span class="ui">Deploy</span>.</li>
+        <li>לוחצות <span class="ui">Edit code</span>. נפתח עורך עם קצת קוד לדוגמה. מוחקות את כולו (<code>Ctrl+A</code> ואז <code>Delete</code>).</li>
+        <li>מעתיקות את הקוד שכאן ומדביקות במקומו.</li>
+      </ol>
+      <div class="prompt">
+        <span class="lbl">הקוד של השרת</span>
+        <pre id="p-code" class="code">// ============ ההגדרות שלך: משנים רק כאן ============
+
+// מילה באנגלית שאת ממציאה (בלי רווחים). את אותה מילה תדביקי אחר כך ב-Meta.
+const VERIFY_TOKEN = `my-secret-word-2468`;
+
+// המספר של החשבון שלך באינסטגרם (מופיע ב-Meta מתחת לשם המשתמש).
+// ככה התגובות שלך עצמך לא מפעילות כלום. עד שיש לך אותו, משאירים ריק.
+const MY_ACCOUNT_ID = ``;
+
+// מילות המפתח. לכל מילה: מה נשלח בפרטי, ותשובות קצרות מתחת לתגובה (נבחרת אחת באקראי).
+// מילה חדשה = מעתיקות בלוק שלם מ-{ עד }, מדביקות מתחתיו ומשנות. כל הטקסטים בין גרשיים הפוכים ` `
+const RULES = [
+  {
+    keyword: `מדריך`,
+    dm: `היי! איזה כיף שכתבת 🙌
+הנה המדריך שהבטחתי:
+https://example.com
+
+נתקעת? כתבי לי, ואעזור לך 😊`,
+    replies: [
+      `שלחתי לך בפרטי 💌`,
+      `מחכה לך בפרטי ✨`,
+      `נשלח! תציצי בהודעות 😊`,
+      `שלחתי 🙌 לא רואה? תבדקי בבקשות ההודעות`,
+    ],
+  },
+];
+
+// ============ מכאן והלאה לא נוגעים ============
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    if (url.pathname === '/privacy') return privacyPage();
+    if (url.pathname !== '/api/webhook') return new Response('Not found', { status: 404 });
+
+    if (request.method === 'GET') {
+      const q = url.searchParams;
+      if (q.get('hub.mode') === 'subscribe' &amp;&amp; q.get('hub.verify_token') === VERIFY_TOKEN) {
+        return new Response(q.get('hub.challenge'));
+      }
+      return new Response('wrong verify token', { status: 403 });
+    }
+    if (request.method !== 'POST') return new Response(null, { status: 405 });
+
+    const raw = await request.text();
+    if (!(await signatureOk(raw, request.headers.get('x-hub-signature-256'), env.APP_SECRET))) {
+      console.warn('bad signature: check APP_SECRET (it must be the Instagram app secret)');
+      return new Response(null, { status: 401 });
+    }
+    let body;
+    try { body = JSON.parse(raw); } catch { return new Response(null, { status: 400 }); }
+
+    const jobs = [];
+    for (const entry of body.entry || []) {
+      for (const change of entry.changes || []) {
+        if (change.field === 'comments') jobs.push(onComment(change.value || {}, env));
+      }
+    }
+    // answer Meta right away, keep sending in the background
+    ctx.waitUntil(Promise.allSettled(jobs));
+    return new Response('EVENT_RECEIVED');
+  },
+};
+
+async function onComment(c, env) {
+  const from = c.from || {};
+  if (MY_ACCOUNT_ID &amp;&amp; from.id === MY_ACCOUNT_ID) return;
+  const words = (c.text || '').toLowerCase().match(/\p{L}+/gu) || [];
+  const rule = RULES.find(r =&gt; words.includes(r.keyword.toLowerCase()));
+  if (!rule) return;
+
+  console.log(`keyword "${rule.keyword}" from @${from.username || from.id}`);
+  await send(env, '/me/messages', { recipient: { comment_id: c.id }, message: { text: rule.dm } });
+  if (rule.replies &amp;&amp; rule.replies.length) {
+    const reply = rule.replies[Math.floor(Math.random() * rule.replies.length)];
+    await send(env, `/${c.id}/replies`, { message: reply });
+  }
+}
+
+async function send(env, path, payload) {
+  const r = await fetch(`https://graph.instagram.com/v23.0${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.IG_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) console.error(`${path} failed: ${r.status} ${await r.text()}`);
+}
+
+async function signatureOk(raw, header, secret) {
+  if (!secret || !header || !header.startsWith('sha256=')) return false;
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+  const sig = new Uint8Array((header.slice(7).match(/../g) || []).map(h =&gt; parseInt(h, 16)));
+  return crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(raw));
+}
+
+function privacyPage() {
+  return new Response(`&lt;!doctype html&gt;&lt;html lang="he" dir="rtl"&gt;&lt;meta charset="utf-8"&gt;
+&lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;&lt;title&gt;מדיניות פרטיות&lt;/title&gt;
+&lt;body style="font-family:Arial,sans-serif;max-width:640px;margin:40px auto;padding:0 16px;line-height:1.7"&gt;
+&lt;h1&gt;מדיניות פרטיות&lt;/h1&gt;
+&lt;p&gt;השירות הזה עונה אוטומטית למי שמגיבה על הפוסטים שלי באינסטגרם במילת מפתח, ושולח לה הודעה בפרטי.&lt;/p&gt;
+&lt;p&gt;המידע שמתקבל מאינסטגרם (טקסט התגובה ומזהה המשתמשת) משמש רק כדי לשלוח את ההודעה, ולא נשמר ולא מועבר לאף אחד.&lt;/p&gt;
+&lt;p&gt;לבקשה למחוק מידע, אפשר לשלוח לי הודעה בפרטי באינסטגרם.&lt;/p&gt;
+&lt;/body&gt;&lt;/html&gt;`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+}</pre>
+        <button type="button" data-copy="p-code">העתיקי את הקוד</button>
+      </div>
+      <h3>ממלאות את ההגדרות שלך, בראש הקוד</h3>
+      <ol class="do">
+        <li><code>VERIFY_TOKEN</code>: ממציאות מילה באנגלית, בלי רווחים. רושמות אותה בצד, צריך אותה בשלב 5.</li>
+        <li><code>keyword</code>: המילה שעוקבות יכתבו בתגובות.</li>
+        <li><code>dm</code>: מה שנשלח בפרטי. כאן שמים את הקישור למה שהבטחת. אפשר לרדת שורה.</li>
+        <li><code>replies</code>: התשובות הקצרות מתחת לתגובה. כדאי כמה נוסחים שונים בסגנון שלך.</li>
+      </ol>
+      <div class="note warn"><b>שומרות על הסימנים.</b> כל טקסט נמצא בין שני גרשיים הפוכים <code>`</code>. כותבות רק ביניהם, ולא מוחקות פסיקים או סוגריים. בתוך הטקסט עצמו לא משתמשות בגרש הפוך.</div>
+      <p>לוחצות <span class="ui">Deploy</span>. למעלה מופיעה הכתובת של השרת, משהו כמו <code>auto-dm.שם-שלך.workers.dev</code>. מעתיקות אותה בצד. ממנה יוצאות שתי כתובות:</p>
+      <div class="table-wrap">
+        <table class="secrets">
+          <tbody>
+            <tr><td>כתובת ה-Callback</td><td>הכתובת עם <code>/api/webhook</code> בסוף</td></tr>
+            <tr><td>עמוד הפרטיות</td><td>הכתובת עם <code>/privacy</code> בסוף. העמוד כבר בנוי בתוך הקוד.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" id="s3">
+    <span class="num">3</span>
+    <div>
+      <h2>אפליקציה ב-Meta</h2>
+      <p>זה החלק הארוך. Meta צריכה "אפליקציה" שדרכה השרת מקבל את התגובות ושולח הודעות. היא שלך, ורק החשבון שלך מחובר אליה.</p>
+      <div class="note"><b>המסכים של Meta משתנים מדי פעם.</b> אם משהו נראה אחרת ממה שכתוב כאן, מצלמות מסך ושואלות צ'אט AI "איפה אני לוחצת עכשיו?".</div>
+
+      <h3>יוצרות את האפליקציה</h3>
+      <ol class="do">
+        <li>נכנסות ל-<a class="ltr" href="https://developers.facebook.com" target="_blank" rel="noopener">developers.facebook.com</a> עם חשבון הפייסבוק. בפעם הראשונה הוא מבקש להירשם כמפתחת, זה כמה לחיצות.</li>
+        <li><span class="ui">My Apps</span> ← <span class="ui">Create App</span>. נותנות שם, למשל <code>auto-dm</code>.</li>
+        <li>במסך ה-Use cases בוחרות <span class="ui">Manage messaging &amp; content on Instagram</span>.</li>
+        <li>אם הוא שואל על Business portfolio, אפשר לבחור שעוד לא מחברות. ממשיכות עד <span class="ui">Create app</span>.</li>
+      </ol>
+
+      <h3>מוסיפות את עצמך כבודקת</h3>
+      <ol class="do">
+        <li>בתפריט: <span class="ui">App roles</span> ← <span class="ui">Roles</span> ← <span class="ui">Add People</span> ← <span class="ui">Instagram Tester</span>, וכותבות את שם המשתמש שלך באינסטגרם.</li>
+        <li>מאשרות את ההזמנה מתוך אינסטגרם: במחשב, ב-instagram.com ← הגדרות ← <span class="ui">Apps and websites</span> ← <span class="ui">Tester invites</span> ← <span class="ui">Accept</span>.</li>
+      </ol>
+
+      <h3>מחברות את החשבון ומקבלות טוקן</h3>
+      <ol class="do">
+        <li>בתפריט: <span class="ui">Use cases</span> ← <span class="ui">Customize</span> ← <span class="ui">API setup with Instagram login</span>.</li>
+        <li>ב-<span class="ui">Generate access tokens</span>: <span class="ui">Add account</span>, מתחברות לאינסטגרם, ואז <span class="ui">Generate token</span>.</li>
+        <li>מעתיקות את הטוקן ומדביקות מיד ב-Cloudflare (שלב 4). הוא נראה כמו שורה ארוכה של אותיות ומספרים.</li>
+        <li>באותו עמוד למעלה, ליד <span class="ui">Instagram app secret</span>, לוחצות <span class="ui">Show</span> ומעתיקות. גם הוא הולך ל-Cloudflare.</li>
+        <li>מתחת לשם המשתמש שלך מופיע מספר ארוך. זה המספר של החשבון שלך. מעתיקות אותו לקוד, בין הגרשיים של <code>MY_ACCOUNT_ID</code>, ולוחצות <span class="ui">Deploy</span>. ככה התגובות שלך עצמך לא מפעילות כלום.</li>
+      </ol>
+      <div class="note warn"><b>זהירות, יש שני "סודות" שונים.</b> צריך את ה-<b>Instagram app secret</b> מהעמוד הזה. יש עוד App secret בהגדרות הכלליות של האפליקציה, ואיתו השרת ידחה את כל התגובות.</div>
+    </div>
+  </section>
+
+  <section class="step" id="s4">
+    <span class="num">4</span>
+    <div>
+      <h2>מכניסות את הסודות ל-Cloudflare</h2>
+      <p>הטוקן והסוד הם כמו סיסמה לחשבון שלך. מדביקות אותם רק כאן, ולא בתוך הקוד. לא שולחות אותם לאף אחד, גם לא לצ'אט AI.</p>
+      <ol class="do">
+        <li>ב-Cloudflare: <span class="ui">Workers &amp; Pages</span> ← השרת שלך ← <span class="ui">Settings</span> ← <span class="ui">Variables and Secrets</span> ← <span class="ui">Add</span>.</li>
+        <li>לכל אחד בוחרות סוג <span class="ui">Secret</span>, ממלאות שם וערך:</li>
+      </ol>
+      <div class="table-wrap">
+        <table class="secrets">
+          <thead><tr><th>Name</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td><code>IG_TOKEN</code></td><td>הטוקן משלב 3</td></tr>
+            <tr><td><code>APP_SECRET</code></td><td>ה-Instagram app secret משלב 3</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>בסוף לוחצות <span class="ui">Deploy</span>.</p>
+    </div>
+  </section>
+
+  <section class="step" id="s5">
+    <span class="num">5</span>
+    <div>
+      <h2>מחברות את Meta לשרת</h2>
+      <ol class="do">
+        <li>חוזרות לעמוד <span class="ui">API setup with Instagram login</span> ← <span class="ui">Configure webhooks</span>.</li>
+        <li><span class="ui">Callback URL</span>: כתובת השרת עם <code>/api/webhook</code> בסוף. <span class="ui">Verify token</span>: המילה שכתבת ב-<code>VERIFY_TOKEN</code>. לוחצות <span class="ui">Verify and save</span>.</li>
+        <li>בטבלת <span class="ui">Webhook fields</span> מדליקות את <code>comments</code>.</li>
+        <li>למעלה, ב-<span class="ui">Generate access tokens</span>, בודקות שליד החשבון שלך <span class="ui">Webhook Subscription</span> במצב <span class="ui">On</span>.</li>
+      </ol>
+      <div class="note"><b>מתג שחוזר אחורה?</b> לוחצות על מתג אחד, מחכות כמה שניות, ומרעננות את הדף לוודא שהוא נשאר דלוק. לחיצות מהירות על כמה מתגים ברצף לפעמים לא נשמרות.</div>
+    </div>
+  </section>
+
+  <section class="step" id="s6">
+    <span class="num">6</span>
+    <div>
+      <h2>מעבירות את האפליקציה ל-Live</h2>
+      <p>כל עוד האפליקציה במצב פיתוח, Meta שולחת לשרת רק תגובות של מי שמוגדרת בה. כדי שזה יעבוד לכל העוקבות:</p>
+      <ol class="do">
+        <li><span class="ui">App settings</span> ← <span class="ui">Basic</span>: ב-<span class="ui">Privacy Policy URL</span> מדביקות את כתובת עמוד הפרטיות משלב 2. שומרות.</li>
+        <li>בתפריט: <span class="ui">Publish</span> ← <span class="ui">Publish</span>.</li>
+      </ol>
+      <p class="sub">לחשבון שלך עצמך זה עובד בלי תהליך בדיקה של Meta. אם בכל זאת תופיע בקשה ל-App Review, זה תהליך של כמה ימים, וממלאים אותו לפי ההוראות שם.</p>
+    </div>
+  </section>
+
+  <section class="step" id="s7">
+    <span class="num">7</span>
+    <div>
+      <h2>בודקות שזה עובד</h2>
+      <ol class="do">
+        <li>מהחשבון השני כותבות את המילה מתחת לפוסט.</li>
+        <li>תוך כמה שניות: הודעה בפרטי בחשבון השני, ותשובה קצרה מתחת לתגובה.</li>
+        <li>לא הגיע? פותחות את היומן: ב-Cloudflare ← השרת ← <span class="ui">Observability</span>. כל תגובה שזוהתה מופיעה שם עם המילה, וכל שגיאה מופיעה באדום. מה כתוב שם, מחפשות בטבלה למטה.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <h2>מילה חדשה לפוסט חדש</h2>
+    <p>מעכשיו, לכל פוסט עם מתנה בפרטי מוסיפים מילה:</p>
+    <ol class="do">
+      <li>ב-Cloudflare: השרת ← <span class="ui">Edit code</span>.</li>
+      <li>ברשימת <code>RULES</code> מסמנות בלוק שלם של מילה, מה-<code>{</code> ועד ה-<code>},</code> שסוגר אותו, ומעתיקות.</li>
+      <li>מדביקות מיד אחריו, ומשנות במילה החדשה את <code>keyword</code>, את <code>dm</code> ואת <code>replies</code>.</li>
+      <li><span class="ui">Deploy</span>, ובודקות מהחשבון השני.</li>
+    </ol>
+    <p class="sub">כל מילה עובדת על כל הפוסטים. לכן נותנים לכל פוסט מילה משלו, ולא מילה שתופיע בתגובות רגילות. "תמונה" למשל תפעיל את האוטומציה גם אצל מי שכותבת "איזו תמונה יפה".</p>
+  </section>
+
+  <section>
+    <h2>כשמשהו לא עובד</h2>
+    <dl class="fix">
+      <div><dt>אחרי עריכה מופיעה שגיאה ואי אפשר לעשות Deploy</dt><dd>כמעט תמיד נמחק גרש הפוך, פסיק או סוגר. העורך מסמן את השורה באדום. אם לא מוצאות, מדביקות את הקוד המקורי מחדש וממלאות שוב.</dd></div>
+      <div><dt><span class="ui">Verify and save</span> נכשל</dt><dd>הכתובת חייבת להסתיים ב-<code>/api/webhook</code>, וה-Verify token צריך להיות בדיוק המילה מ-<code>VERIFY_TOKEN</code>, כולל אותיות גדולות וקטנות. ושלא לשכוח Deploy אחרי שינוי בקוד.</dd></div>
+      <div><dt>ביומן כתוב <code>bad signature</code></dt><dd>ב-APP_SECRET נכנס הסוד הלא נכון. מחליפות אותו ב-Instagram app secret (שלב 3).</dd></div>
+      <div><dt>ביומן לא מופיע כלום</dt><dd>בודקות שלושה דברים: <code>comments</code> דלוק, Webhook Subscription של החשבון במצב On, והאפליקציה ב-Live.</dd></div>
+      <div><dt>התגובה זוהתה, אבל ההודעה לא נשלחה</dt><dd>ביומן תופיע שגיאה מ-Meta. הכי נפוץ: הטוקן פג או הועתק חסר. מייצרות חדש (<span class="ui">Generate token</span>) ומחליפות ב-Cloudflare.</dd></div>
+      <div><dt>החברה אומרת שלא קיבלה כלום</dt><dd>אם היא לא עוקבת אחרייך, ההודעה נכנסת אצלה ל<b>בקשות הודעות</b>, ולא לתיבה הרגילה.</dd></div>
+      <div><dt>מי שהגיבה אתמול לא קיבלה</dt><dd>האוטומציה עובדת רק על תגובות שנכתבו אחרי שהיא הופעלה. לתגובות ישנות עונים ידנית.</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2>חשוב לדעת</h2>
+    <ul class="facts">
+      <li><b>הודעה אוטומטית אחת לכל תגובה</b><span>זה הכלל של Meta. תוכן ארוך שמים בעמוד, ושולחים קישור.</span></li>
+      <li><b>הטוקן פג אחרי 60 יום</b><span>קובעות תזכורת ביומן. כשמגיע הזמן: <span class="ui">Generate token</span> שוב, ומחליפות את IG_TOKEN ב-Cloudflare.</span></li>
+      <li><b>התגובות שלך לא מפעילות כלום</b><span>השרת מדלג על החשבון שלך, כדי שתוכלי לענות בחופשיות.</span></li>
+      <li><b>לא סומכות על קישורים זמניים</b><span>מה ששולחים בפרטי צריך להישאר זמין גם בעוד חודש: עמוד באתר שלך או בשרת עצמו.</span></li>
+    </ul>
+  </section>
+
+  <footer>נתקעת באמצע? מצלמות מסך ושואלות צ'אט AI (Claude או ChatGPT) "איפה אני לוחצת עכשיו?". רק בלי להדביק לו את הטוקן או הסוד.</footer>
+</main>
+
+<script>
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    const label = btn.textContent;
+    btn.addEventListener('click', async () => {
+      const el = document.getElementById(btn.dataset.copy);
+      try { await navigator.clipboard.writeText(el.innerText); }
+      catch {
+        const r = document.createRange(); r.selectNodeContents(el);
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+        try { document.execCommand('copy'); } catch {}
+      }
+      btn.textContent = 'הועתק ✓';
+      setTimeout(() => { btn.textContent = label; }, 2000);
+    });
+  });
+</script>
+</body>
+</html>
