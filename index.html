@@ -101,7 +101,8 @@ ol.do li::marker { color: var(--gold); font-weight: 700; }
 .facts li { border-inline-start: 3px solid var(--gold-deep); padding-inline-start: 14px; }
 .facts b { display: block; }
 .facts span { color: var(--muted); }
-footer { color: var(--muted); font-size: 14px; text-align: center; }
+footer { color: var(--muted); font-size: 14px; text-align: center; display: grid; gap: 14px; }
+.rights { color: var(--gold); font-weight: 700; font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -421,7 +422,7 @@ function privacyPage() {
     </ul>
   </section>
 
-  <footer>נתקעת באמצע? מצלמות מסך ושואלות צ'אט AI (Claude או ChatGPT) "איפה אני לוחצת עכשיו?". רק בלי להדביק לו את הטוקן או הסוד.</footer>
+  <footer>נתקעת באמצע? מצלמות מסך ושואלות צ'אט AI (Claude או ChatGPT) "איפה אני לוחצת עכשיו?". רק בלי להדביק לו את הטוקן או הסוד.<p class="rights">© 2026 כל הזכויות שמורות לאביגיל AI · בינה מתוך אמונה</p></footer>
 </main>
 
 <script>
